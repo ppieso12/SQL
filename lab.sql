@@ -97,6 +97,65 @@ where koszt >= 0.25 and koszt <= 0.35;
 3.5
 1
 
+4.1
+SELECT k.nazwa, z.idzamowienia, FROM klienci k, zamowienia z  
+WHERE z.idklienta = k.idklienta;
+
+4.2
+4.2.1
+SELECT k.nazwa, k.ulica, z.idzamowienia FROM klienci k JOIN zamowienia z
+ON z.idklienta=k.idklienta and k.nazwa similar to '%Antoni';
+
+4.2.2
+SELECT k.nazwa, k.ulica, z.idzamowienia FROM klienci k JOIN zamowienia z
+ON z.idklienta=k.idklienta and k.ulica similar to '%/%';
+
+4.2.3
+SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji FROM klienci k JOIN zamowienia z
+ON z.idklienta=k.idklienta and extract(year from z.datarealizacji) = 2013 and extract(month from z.datarealizacji) = 11;
+
+4.3.1
+
+SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji FROM klienci k JOIN zamowienia z
+ON z.idklienta=k.idklienta and extract(year from z.datarealizacji) >= 2012;
+
+SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji FROM klienci k NATURAL JOIN zamowienia z
+where extract(year from z.datarealizacji) >= 2012;
+4.3.2
+SELECT k.nazwa, k.ulica, z.idzamowienia, a.idpudelka, b.nazwa FROM klienci k JOIN zamowienia z 
+using(idklienta) JOIN artykuly a using(idzamowienia) JOIN pudelka b using(idpudelka)
+where b.nazwa similar to 'Kremowa fantazja' or b.nazwa similar to 'Kolekcja jesienna';
+
+4.3.3
+SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji FROM klienci k NATURAL JOIN zamowienia z;
+
+4.3.4
+SELECT k.nazwa, k.ulica FROM klienci k 
+EXCEPT SELECT k.nazwa, k.ulica FROM klienci k NATURAL JOIN zamowienia;
+
+4.4.1
+SELECT p.nazwa, p.opis, c.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki);
+4.4.2
+SELECT p.nazwa, p.opis, c.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+where p.idpudelka similar to 'heav';
+
+4.5.1
+
+SELECT p.nazwa, p.opis, c.nazwa as "nazwa cz3koladki" , p.cena FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+where c.idczekoladki similar to 'd09';
+
+4.5.2
+
+SELECT DISTINCT p.nazwa, p.opis, p.cena FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+where c.nazwa similar to 'S%';
+
+4.5.3
+
+SELECT p.nazwa, p.opis, c.nazwa as "nazwa cz3koladki" , p.cena FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+where count(c.idczekoladki) = 4;
+
+
+
 
 
 
