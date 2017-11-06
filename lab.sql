@@ -154,17 +154,53 @@ where c.nazwa similar to 'S%';
 SELECT p.nazwa, p.opis, c.nazwa as "nazwa cz3koladki" , p.cena FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
 where count(c.idczekoladki) = 4;
 
+5.1.1
+
+SELECT count(*) FROM czekoladki;
+
+5.1.2
+SELECT count(*) FROM czekoladki WHERE nadzienie IS NOT NULL;
+SELECT count(nadzienie) FROM czekoladki;
+
+5.1.3 pudełka, w którym jest najwięcej czekoladek (uwaga: konieczne jest użycie LIMIT),
+
+SELECT z.sztuk, p.nazwa, p.opis FROM pudelka p JOIN zawartosc z using(idpudelka)
+ORDER BY z.sztuk DESC LIMIT 1;
+
+SELECT z.sztuk, p.nazwa, p.opis FROM pudelka p JOIN zawartosc z using(idpudelka)
+WHERE z.sztuk = (SELECT MAX(z.sztuk) FROM zawartosc z);
 
 
+5.2.1 masy poszczególnych pudełek,
+SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+GROUP BY p.nazwa;
 
+5.2.2 pudełka o największej masie,
+to zle
+SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+GROUP BY p.nazwa
+HAVING SUM(c.masa*z.sztuk) > SUM(c.masa*z.sztuk)
+ORDER BY SUM(c.masa*z.sztuk) desc;
 
+SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+GROUP BY p.nazwa
+ORDER BY SUM(c.masa*z.sztuk) desc LIMIT 1;
 
+5.3.1
+SELECT datarealizacji, count(*) FROM zamowienia
+GROUP BY datarealizacji
+ORDER BY datarealizacji;
 
+5.3.2
+SELECT count(*) FROM zamowienia;
 
+5.4.1 czekoladki, która występuje w największej liczbie pudełek 
 
-
-
-
+SELECT c.nazwa as czekoladka, count(c.nazwa) FROM pudelka p
+JOIN zawartosc z USING(idpudelka)
+JOIN czekoladki c USING(idczekoladki)
+GROUP BY c.nazwa
+ORDER BY count(c.nazwa) DESC;
 
 
 
