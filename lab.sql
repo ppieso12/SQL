@@ -202,8 +202,88 @@ JOIN czekoladki c USING(idczekoladki)
 GROUP BY c.nazwa
 ORDER BY count(c.nazwa) DESC;
 
+6.1.1
+
+insert into czekoladki(idczekoladki,nazwa,czekolada,orzechy,nadzienie,opis,koszt,masa)
+values('W98','Biały kieł','biała','laskowe','marcepan','Rozpływające się w rękach i kieszeniach',0.45,20);
+
+insert into klienci(idklienta,nazwa,ulica,miejscowosc,kod,telefon)
+values('90','Matusiak Edward','Kropiwnickiego 6/3','Leningrad','31-471','031 423 45 38');
+
+insert into klienci(idklienta,nazwa,ulica,miejscowosc,kod,telefon)
+values('91','Matusiak Alina','Kropiwnickiego 6/3','Leningrad','31-471','031 423 45 38');
+
+insert into klienci(idklienta,nazwa,ulica,miejscowosc,kod,telefon)
+values('92','Kimono Franek','Karateków 8','Mistrz','30-029','501 498 324');
+
+select * from klienci where idklienta between 90 and 93;
+
+insert into klienci(idklienta,nazwa,ulica,miejscowosc,kod,telefon)
+values('93','Matusiak Iza',
+       (SELECT ulica from klienci where nazwa = 'Matusiak Edward'),
+       (SELECT miejscowosc from klienci where nazwa = 'Matusiak Edward'),
+       (SELECT kod from klienci where nazwa = 'Matusiak Edward'),
+       (SELECT telefon from klienci where nazwa = 'Matusiak Edward')
+      );
+ 6.2.1
+insert into czekoladki(idczekoladki,nazwa,czekolada,orzechy,nadzienie,opis,koszt,masa)
+values('x91','Nieznana Nieznajoma',NULL,NULL,NULL,'Niewidzialna czekoladka wspomagajaca odchudzanie',0.26,0);
+
+insert into czekoladki(idczekoladki,nazwa,czekolada,orzechy,nadzienie,opis,koszt,masa)
+values('M98','Mleczny Raj','Mleczna',NULL,NULL,'Aksamitna mleczna czekolada w ksztalcie butelki z mlekiem',0.26,36);
+
+select * from czekoladki where idczekoladki = 'x91' or idczekoladki = 'M98';
+
+6.3.1
+delete from czekoladki where idczekoladki = 'x91' or idczekoladki = 'M98';
+
+na odwrot
+insert into czekoladki values('x91','Nieznana Nieznajoma',NULL,NULL,NULL,'Niewidzialna czekoladka wspomagajaca odchudzanie',0.26,0);
+
+insert into czekoladki values('M98','Mleczny Raj','Mleczna',NULL,NULL,'Aksamitna mleczna czekolada w ksztalcie butelki z mlekiem',0.26,36);
+
+6.4.1
+
+update klienci set nazwa = 'Nowak Iza' 
+where nazwa = 'Matusiak Iza';
+
+6.4.2
+update czekoladki set koszt = koszt*0.9 
+where idczekoladki in ('x91','M98','W98');
+
+6.4.3
+update czekoladki set koszt = 
+(SELECT koszt from czekoladki where idczekoladki = 'W98')
+where nazwa = 'Nieznana Nieznajoma';
+
+select * from czekoladki where idczekoladki in ('x91','W98','M98');
 
 
+6.5
+DELETE FROM klienci WHERE nazwa similar to 'Matusiak%';
+
+6.6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+       
+       
+       
+       
 
 
 
