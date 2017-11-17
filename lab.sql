@@ -327,11 +327,24 @@ where c.nazwa = 'Gorzka truskawkowa' and z.sztuk >= 3;
 
 4.6.1 Wyświetl wartości kluczy głównych oraz nazwy czekoladek, których koszt 
 jest większy od kosztu czekoladki o wartości klucza głównego równej d08.
-with p as (select koszt from czekoladki where idczekoladki = 'd08')
-select idczekoladki, nazwa, koszt from czekoladki natural join p;
 
+select idczekoladki, nazwa, koszt,(select koszt from czekoladki where idczekoladki = 'd08')  from czekoladki 
+where koszt > (select koszt from czekoladki where idczekoladki = 'd08');
 
-5.1.1
+4.6.2 Kto (nazwa klienta) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiała Górka Alicja.
+
+with alicja as (select p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
+           JOIN klienci k using(idklienta) where k.nazwa = 'Górka Alicja')
+select k.nazwa, p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
+JOIN klienci k using(idklienta) JOIN alicja using(idpudelka);
+
+4.6.3 Kto (nazwa klienta, adres) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiali klienci z Katowic.
+with klient as (select p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
+           JOIN klienci k using(idklienta) where k.miejscowosc = 'Katowice')
+select k.nazwa, k.miejscowosc from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
+JOIN klienci k using(idklienta) JOIN klient using(idpudelka) where k.miejscowosc != 'Katowice';
+
+5.1.1 łącznej liczby czekoladek w bazie danych,
 
 SELECT count(*) FROM czekoladki;
 
@@ -347,21 +360,53 @@ ORDER BY z.sztuk DESC LIMIT 1;
 SELECT z.sztuk, p.nazwa, p.opis FROM pudelka p JOIN zawartosc z using(idpudelka)
 WHERE z.sztuk = (SELECT MAX(z.sztuk) FROM zawartosc z);
 
+5.1.4 ★ łącznej liczby czekoladek w poszczególnych pudełkach,
+select p.nazwa, sum(z.sztuk) from pudelka p JOIN zawartosc z using(idpudelka)
+GROUP BY p.nazwa;
+
+select p.nazwa, z.sztuk from pudelka p JOIN zawartosc z using(idpudelka);
+
+★ łącznej liczby czekoladek bez orzechów w poszczególnych pudełkach,
+select p.nazwa, count(c) from pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+WHERE c.orzechy is null
+GROUP BY p.nazwa;
+
+★ łącznej liczby czekoladek w mlecznej czekoladzie w poszczególnych pudełkach.
+select p.nazwa, count(c) from pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+WHERE c.czekolada ='mleczna'
+GROUP BY p.nazwa;
+
 
 5.2.1 masy poszczególnych pudełek,
 SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
 GROUP BY p.nazwa;
 
 5.2.2 pudełka o największej masie,
-to zle
-SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
-GROUP BY p.nazwa
-HAVING SUM(c.masa*z.sztuk) > SUM(c.masa*z.sztuk)
-ORDER BY SUM(c.masa*z.sztuk) desc;
+
+with maxim as (SELECT SUM(c.masa*z.sztuk) summ,p.nazwa FROM pudelka p 
+                                JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) GROUP BY p.nazwa)
+Select m.summ, m.nazwa from maxim m
+where m.summ = (Select max(m.summ) from maxim m);
+
 
 SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
 GROUP BY p.nazwa
 ORDER BY SUM(c.masa*z.sztuk) desc LIMIT 1;
+
+5.2.3 średniej masy pudełka w ofercie cukierni,
+with maxim as (SELECT SUM(c.masa*z.sztuk) summ, p.idpudelka FROM pudelka p 
+                                JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) GROUP BY p.idpudelka)
+Select avg(summ) from maxim;
+
+5.2.4★ średniej wagi pojedynczej czekoladki w poszczególnych pudełkach,
+--poszczegolne masy czeko w pudelkach
+SELECT c.nazwa,c.masa FROM pudelka p 
+                                JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) 
+                                where p.idpudelka = 'supr' GROUP BY c.nazwa, c.masa;
+                                
+SELECT avg(c.masa) summ, p.idpudelka, p.nazwa FROM pudelka p 
+                                JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) GROUP BY p.idpudelka;
+
 
 5.3.1
 SELECT datarealizacji, count(*) FROM zamowienia
@@ -371,6 +416,27 @@ ORDER BY datarealizacji;
 5.3.2
 SELECT count(*) FROM zamowienia;
 
+5.3.3 ★ łącznej wartości wszystkich zamówień, FUCK
+
+SELECT a.idzamowienia, sum(a.sztuk*p.cena)
+from artykuly a JOIN pudelka p USING(idpudelka)
+GROUP BY a.idzamowienia 
+ORDER BY a.idzamowienia;
+
+SELECT wartosczamowienia FROM (SELECT SUM(artykuly.sztuk * pudelka.cena) AS wartosczamowienia 
+                                    FROM zamowienia NATURAL JOIN artykuly 
+                                    JOIN pudelka ON (artykuly.idpudelka = pudelka.idpudelka) 
+                                    GROUP BY zamowienia.idzamowienia)
+                                    AS wartosci;
+                                    
+                                    
+5.3.4 ★ klientów, liczby złożonych przez nich zamówień i łącznej wartości złożonych przez nich zamówień.
+SELECT k.nazwa,count(z.idzamowienia), sum(a.sztuk*p.cena) from klienci k JOIN zamowienia z USING(idklienta) JOIN artykuly a 
+USING(idzamowienia) JOIN pudelka p USING(idpudelka)
+GROUP BY k.nazwa
+ORDER BY k.nazwa;
+
+
 5.4.1 czekoladki, która występuje w największej liczbie pudełek 
 
 SELECT c.nazwa as czekoladka, count(c.nazwa) FROM pudelka p
@@ -378,6 +444,37 @@ JOIN zawartosc z USING(idpudelka)
 JOIN czekoladki c USING(idczekoladki)
 GROUP BY c.nazwa
 ORDER BY count(c.nazwa) DESC;
+
+5.4.4
+★ pudełka, które jest najczęściej zamawiane przez klientów.
+SELECT p.nazwa, count(p.idpudelka) from pudelka p JOIN artykuly a USING(idpudelka)
+GROUP BY p.nazwa
+ORDER BY 2 desc;
+
+5.5.1
+
+
+5.7.1 zysk ze sprzedaży jednej sztuki poszczególnych pudełek (różnica między ceną pudełka i kosztem jego wytworzenia),
+SELECT p.nazwa, p.cena - sum(z.sztuk*c.koszt) FROM pudelka p JOIN zawartosc z USING(idpudelka) JOIN czekoladki c USING(idczekoladki)
+GROUP BY p.nazwa, p.cena;
+
+5.7.2zysk ze sprzedaży zamówionych pudełek,
+with zy as(SELECT p.cena - sum(z.sztuk*c.koszt) as zysk, p.idpudelka
+                                    FROM pudelka p JOIN zawartosc z USING(idpudelka) JOIN czekoladki c USING(idczekoladki)
+GROUP BY  p.idpudelka, p.cena) 
+SELECT a.idzamowienia, sum(a.sztuk*zysk)
+FROM artykuly a JOIN zy USING(idpudelka)
+GROUP BY a.idzamowienia
+ORDER BY a.idzamowienia asc;
+
+★ zysk ze sprzedaży wszystkich pudełek czekoladek w cukierni. TODO
+with zy as(SELECT p.cena - sum(z.sztuk*c.koszt) as zysk, p.idpudelka
+                                    FROM pudelka p JOIN zawartosc z USING(idpudelka) JOIN czekoladki c USING(idczekoladki)
+GROUP BY  p.idpudelka, p.cena) 
+SELECT sum((SELECT sum(a.sztuk*zysk) as zzzz
+FROM artykuly a JOIN zy USING(idpudelka)
+GROUP BY a.idzamowienia
+ORDER BY a.idzamowienia asc));
 
 6.1.1
 
