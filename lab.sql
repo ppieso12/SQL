@@ -232,7 +232,14 @@ USING(idklienta) where k.nazwa similar to '%Antoni';
 SELECT k.nazwa, k.ulica, z.idzamowienia FROM klienci k JOIN zamowienia z
 ON z.idklienta=k.idklienta and k.ulica similar to '%/%';
 
-4.2.3
+4.2.3★ zostały złożone przez klienta z Krakowa do realizacji w listopadzie 2013 roku.
+select idzamowienia, datarealizacji, nazwa, miejscowosc from zamowienia natural join klienci 
+where extract(month from datarealizacji) = 11 and
+extract(year from datarealizacji) = 2013 and
+miejscowosc similar to 'Krak(ó|o)w';
+
+
+
 SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji FROM klienci k JOIN zamowienia z
 ON z.idklienta=k.idklienta and extract(year from z.datarealizacji) = 2013 and extract(month from z.datarealizacji) = 11;
 
@@ -248,16 +255,19 @@ SELECT k.nazwa, k.ulica, z.idzamowienia, a.idpudelka, b.nazwa FROM klienci k JOI
 using(idklienta) JOIN artykuly a using(idzamowienia) JOIN pudelka b using(idpudelka)
 where b.nazwa similar to 'Kremowa fantazja' or b.nazwa similar to 'Kolekcja jesienna';
 
-4.3.3
-SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji FROM klienci k NATURAL JOIN zamowienia z;
+4.3.3 złożyli przynajmniej jedno zamówienie,
+SELECT distinct k.nazwa, k.ulica, miejscowosc FROM klienci k NATURAL JOIN zamowienia z;
 
-4.3.4  
-złączenie zewnętrzne
+4.3.4  --NA ZŁĄCZENIU ZEW LEWYM LUB FULL JOIN LUB EXCEPT
+--złączenie zewnętrzne
 SELECT k.nazwa, k.ulica FROM klienci k LEFT JOIN zamowienia z USING(idklienta)
-where idzamowienia is null;
+where z is null;
 
 SELECT k.nazwa, k.ulica FROM klienci k 
 EXCEPT SELECT k.nazwa, k.ulica FROM klienci k NATURAL JOIN zamowienia;
+
+SELECT k.nazwa, k.ulica FROM klienci k full join zamowienia z using(idklienta)
+where z is null;
 
 SELECT k.nazwa, k.ulica FROM klienci k 
 EXCEPT SELECT k.nazwa, k.ulica FROM klienci k JOIN zamowienia z using(idklienta);
@@ -265,17 +275,17 @@ EXCEPT SELECT k.nazwa, k.ulica FROM klienci k JOIN zamowienia z using(idklienta)
 SELECT k.nazwa, k.ulica FROM klienci k 
 EXCEPT SELECT k.nazwa, k.ulica FROM klienci k JOIN zamowienia z ON k.idklienta = z.idklienta;
 
-4.3.5 złożyli zamówienia z datą realizacji w listopadzie 2013,
+4.3.5★ złożyli zamówienia z datą realizacji w listopadzie 2013,
 SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji FROM klienci k NATURAL JOIN zamowienia z
 where extract(year from z.datarealizacji) = 2013 and extract(month from z.datarealizacji) = 11;
 
-4.3.6 zamówili co najmniej 2 sztuki pudełek Kremowa fantazja lub Kolekcja jesienna w ramach jednego zamówienia
+4.3.6★ zamówili co najmniej 2 sztuki pudełek Kremowa fantazja lub Kolekcja jesienna w ramach jednego zamówienia
 
 SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji, a.sztuk, p.nazwa FROM klienci k JOIN zamowienia z USING(idklienta) 
 JOIN artykuly a USING(idzamowienia) JOIN pudelka p USING(idpudelka)
 where a.sztuk >= 2 and p.nazwa in ('Kremowa fantazja','Kolekcja jesienna');
 
-4.3.7 zamówili pudełka, które zawierają czekoladki z migdałami.
+4.3.7★ klienci zamówili pudełka, które zawierają czekoladki z migdałami.
 SELECT k.nazwa, k.ulica, z.idzamowienia, z.datarealizacji, a.sztuk, p.nazwa, c.orzechy FROM klienci k JOIN zamowienia z USING(idklienta) 
 JOIN artykuly a USING(idzamowienia) JOIN pudelka p USING(idpudelka) JOIN zawartosc zaw USING(idpudelka) JOIN
 czekoladki c USING(idczekoladki)
@@ -328,7 +338,12 @@ where c.nazwa = 'Gorzka truskawkowa' and z.sztuk >= 3;
 4.6.1 Wyświetl wartości kluczy głównych oraz nazwy czekoladek, których koszt 
 jest większy od kosztu czekoladki o wartości klucza głównego równej d08.
 
-select idczekoladki, nazwa, koszt,(select koszt from czekoladki where idczekoladki = 'd08')  from czekoladki 
+select c1.idczekoladki as "ID1", c1.nazwa, c1.koszt as "Koszt1", c2.idczekoladki as "ID2", c2.koszt as "Koszt2"
+from czekoladki c1, czekoladki c2
+where c2.idczekoladki like 'd08' and c1.koszt > c2.koszt;
+
+
+select idczekoladki, nazwa, koszt  from czekoladki 
 where koszt > (select koszt from czekoladki where idczekoladki = 'd08');
 
 4.6.2 Kto (nazwa klienta) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiała Górka Alicja.
@@ -338,12 +353,18 @@ with alicja as (select p.idpudelka from pudelka p JOIN artykuly a using(idpudelk
 select k.nazwa, p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
 JOIN klienci k using(idklienta) JOIN alicja using(idpudelka);
 
+
+
+
+
+
+
 4.6.3 Kto (nazwa klienta, adres) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiali klienci z Katowic.
 with klient as (select p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
            JOIN klienci k using(idklienta) where k.miejscowosc = 'Katowice')
 select k.nazwa, k.miejscowosc from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
 JOIN klienci k using(idklienta) JOIN klient using(idpudelka) where k.miejscowosc != 'Katowice';
-
+-------_######---------
 5.1.1 łącznej liczby czekoladek w bazie danych,
 
 SELECT count(*) FROM czekoladki;
@@ -434,7 +455,7 @@ pudel;
 SELECT c.nazwa,c.masa FROM pudelka p 
                                 JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) 
                                 where p.idpudelka = 'supr' GROUP BY c.nazwa, c.masa;
-                                
+--dobrze                                
 SELECT avg(c.masa) summ, p.idpudelka, p.nazwa FROM pudelka p 
                                 JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) GROUP BY p.idpudelka;
 
@@ -444,7 +465,7 @@ SELECT datarealizacji, count(*) FROM zamowienia
 GROUP BY datarealizacji
 ORDER BY datarealizacji;
 
-5.3.2
+5.3.2 łącznej liczby wszystkich zamówień
 SELECT count(*) FROM zamowienia;
 
 5.3.3 ★ łącznej wartości wszystkich zamówień
@@ -472,14 +493,32 @@ ORDER BY k.nazwa;
 
 
 5.4.1 czekoladki, która występuje w największej liczbie pudełek 
-with policzone as (SELECT c.nazwa as czekoladka, count(c) as ilosc FROM pudelka p natural join zawartosc z JOIN czekoladki c USING(idczekoladki)
+with policzone as (SELECT c.nazwa as czekoladka, count(p) as liczba_p FROM pudelka p natural join zawartosc z JOIN czekoladki c USING(idczekoladki)
 GROUP BY c.nazwa ORDER BY 2 DESC)
 
-SELECT pol.nazwa as czekoladka, pol.ilosc FROM policzone pol
-where pol.ilosc = max(pol.ilosc);
+SELECT pol.czekoladka, pol.liczba_p FROM policzone pol
+where pol.liczba_p = (select max(pol.liczba_p) from policzone pol);
+
+5.4.2 pudełka, które zawiera najwięcej czekoladek bez orzechów
+with bezorzechow as (select p.nazwa, sum(z.sztuk) as ilosc from pudelka p natural join zawartosc z join czekoladki c using(idczekoladki)
+                    where c.orzechy is null group by 1 order by 2 desc)
+select b.nazwa, b.ilosc as "bez orzechow" from bezorzechow b
+where b.ilosc = (select max(b.ilosc) from bezorzechow b);
+ 
+
+5.4.3czekoladki, która występuje w najmniejszej liczbie pudełek,
+with najmniej as (select nazwa, sum(sztuk) as liczba from czekoladki natural join zawartosc group by 1 order by 2 asc)
+select n.nazwa, n.liczba from najmniej n
+where n.liczba = (select min(n.liczba) from najmniej n);
+
 
 5.4.4
-★ pudełka, które jest najczęściej zamawiane przez klientów.
+★ pudełka, które jest najczęściej zamawiane przez klientów.  --!!!!aggregate functions are not allowed in WHERE
+with najczesciej as (select p.nazwa, sum(a.sztuk) as suma from pudelka p natural join artykuly a group by 1 order by 2)
+select naj.nazwa, naj.suma from najczesciej naj
+where naj.suma = (select max(naj.suma) from najczesciej naj);
+
+
 SELECT p.nazwa, count(p.idpudelka) from pudelka p JOIN artykuly a USING(idpudelka)
 GROUP BY p.nazwa
 ORDER BY 2 desc;
@@ -490,9 +529,35 @@ from zamowienia
 group by 1
 order by 1;
 
-5.6 łącznej masy wszystkich pudełek czekoladek znajdujących się w cukierni
+5.5.2 liczby zamówień na poszczególne miesiące,
+select extract(month from datarealizacji) as miesiac, extract(year from datarealizacji) as rok, count(idzamowienia)
+from zamowienia
+group by 1,2   --TRZEBA PO 2 KOLUMNACH GRUPOWAC
+order by 1;
+
+5.5.3 liczby zamówień na poszczególne tyg,
+select extract(week from datarealizacji) as tydzein,extract(month from datarealizacji) as mies, extract(year from datarealizacji) as rok,
+count(idzamowienia)
+from zamowienia
+group by 1,2,3
+order by 1;
+
+
+5.5.4 liczby zamówień do realizacji w poszczególnych miejscowościach. WAZNE
+select miejscowosc, count(z) from klienci natural join zamowienia z
+group by miejscowosc;  
+
+
+
+
+5.6.1 łącznej masy wszystkich pudełek czekoladek znajdujących się w cukierni
 select sum(boxes.wagi) from (select sum(sztuk*masa)*p.stan as wagi from zawartosc join czekoladki using(idczekoladki) 
                              join pudelka p using(idpudelka) group by p.idpudelka) boxes;
+                             
+5.6.2  łącznej wartości wszystkich pudełek czekoladek znajdujących się w cukierni.                           
+select sum(cena*stan) from pudelka;
+
+
 
 5.7.1 zysk ze sprzedaży jednej sztuki poszczególnych pudełek (różnica między ceną pudełka i kosztem jego wytworzenia),
 SELECT p.nazwa, p.cena - sum(z.sztuk*c.koszt) FROM pudelka p JOIN zawartosc z USING(idpudelka) JOIN czekoladki c USING(idczekoladki)
