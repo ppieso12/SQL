@@ -47,6 +47,9 @@ where czekolada not in ('mleczna','biała') and (orzechy is not null or nadzieni
 select idczekoladki as idCzekoladki, nazwa, czekolada, orzechy, nadzienie from czekoladki 
 where czekolada  in ('mleczna','biała') and nadzienie is null;
 
+2.6.5
+select nazwa, koszt, masa from czekoladki 
+where masa between 25 and 35 and koszt not between 0.15 and 0.24 and koszt not between 0.25 and 0.35;
 \o wynik.html
 pierdoły ze skryptami
 3.1
@@ -84,7 +87,7 @@ select idczekoladki, nazwa, czekolada, orzechy, nadzienie from czekoladki
 where nazwa like 'S%i';
 3
 select idczekoladki, nazwa, czekolada, orzechy, nadzienie from czekoladki
-where nazwa like 'S%_m%';
+where nazwa like 'S% m%';
 4
 select idczekoladki, nazwa, czekolada, orzechy, nadzienie from czekoladki
 where nazwa similar to '(A|B|C)%';
@@ -335,7 +338,8 @@ SELECT p.nazwa,c.nadzienie,c.czekolada,c.nazwa, p.cena, z.sztuk FROM pudelka p
 JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
 where c.nazwa = 'Gorzka truskawkowa' and z.sztuk >= 3;
 
-4.6.1 Wyświetl wartości kluczy głównych oraz nazwy czekoladek, których koszt 
+4.6.1  należy użyć samozłączeń (złączeń własnych).  !!!!!!
+Wyświetl wartości kluczy głównych oraz nazwy czekoladek, których koszt 
 jest większy od kosztu czekoladki o wartości klucza głównego równej d08.
 
 select c1.idczekoladki as "ID1", c1.nazwa, c1.koszt as "Koszt1", c2.idczekoladki as "ID2", c2.koszt as "Koszt2"
@@ -348,18 +352,29 @@ where koszt > (select koszt from czekoladki where idczekoladki = 'd08');
 
 4.6.2 Kto (nazwa klienta) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiała Górka Alicja.
 
+select distinct k2.nazwa
+from klienci k1 natural join zamowienia z1 natural join artykuly a1,
+klienci k2 natural join zamowienia z2 natural join artykuly a2
+where k1.nazwa like 'Górka Alicja' and a1.idpudelka = a2.idpudelka
+order by 1;
+
+
 with alicja as (select p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
            JOIN klienci k using(idklienta) where k.nazwa = 'Górka Alicja')
 select k.nazwa, p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
 JOIN klienci k using(idklienta) JOIN alicja using(idpudelka);
 
 
-
-
-
-
-
 4.6.3 Kto (nazwa klienta, adres) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiali klienci z Katowic.
+
+select distinct k1.miejscowosc, k2.nazwa,(k2.ulica || ' ' || k2.miejscowosc || ' ' || k2.kod) as "Adres"
+from klienci k1 natural join zamowienia z1 natural join artykuly a1,
+klienci k2 natural join zamowienia z2 natural join artykuly a2
+where k1.miejscowosc like 'Katowice' and a1.idpudelka = a2.idpudelka
+
+
+
+
 with klient as (select p.idpudelka from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
            JOIN klienci k using(idklienta) where k.miejscowosc = 'Katowice')
 select k.nazwa, k.miejscowosc from pudelka p JOIN artykuly a using(idpudelka) JOIN zamowienia z using(idzamowienia)
@@ -415,14 +430,17 @@ GROUP BY p.nazwa;
 SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
 GROUP BY p.nazwa;
 
+SELECT SUM(c.masa*z.sztuk) as waga, p.nazwa, p.cena, p.stan FROM pudelka p JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki)
+GROUP BY 2,3,4;
+
 SELECT SUM(c.masa*z.sztuk) as waga, z.idpudelka from zawartosc z JOIN czekoladki c using(idczekoladki)
 GROUP BY z.idpudelka;
 
 5.2.2 pudełka o największej masie,
 
-with maxim as (SELECT SUM(c.masa*z.sztuk) summ,p.nazwa FROM pudelka p 
-                                JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) GROUP BY p.nazwa)
-Select m.summ, m.nazwa from maxim m
+with maxim as (SELECT SUM(c.masa*z.sztuk) summ,p.nazwa, p.idpudelka FROM pudelka p 
+                                JOIN zawartosc z using(idpudelka) JOIN czekoladki c using(idczekoladki) GROUP BY p.nazwa, p.idpudelka)
+Select m.summ, m.nazwa, m.idpudelka from maxim m
 where m.summ = (Select max(m.summ) from maxim m);
 
 
@@ -519,6 +537,7 @@ select naj.nazwa, naj.suma from najczesciej naj
 where naj.suma = (select max(naj.suma) from najczesciej naj);
 
 
+
 SELECT p.nazwa, count(p.idpudelka) from pudelka p JOIN artykuly a USING(idpudelka)
 GROUP BY p.nazwa
 ORDER BY 2 desc;
@@ -602,6 +621,7 @@ ORDER BY a.idzamowienia asc));
 insert into czekoladki(idczekoladki,nazwa,czekolada,orzechy,nadzienie,opis,koszt,masa)
 values('W98','Biały kieł','biała','laskowe','marcepan','Rozpływające się w rękach i kieszeniach',0.45,20);
 
+
 insert into klienci(idklienta,nazwa,ulica,miejscowosc,kod,telefon)
 values('90','Matusiak Edward','Kropiwnickiego 6/3','Leningrad','31-471','031 423 45 38');
 
@@ -652,8 +672,12 @@ update czekoladki set koszt =
 where nazwa = 'Nieznana Nieznajoma';
 
 select * from czekoladki where idczekoladki in ('x91','W98','M98');
+6.4.4
+update klienci set miejscowosc = 'Piotrograd' where miejscowosc = 'Leningrad';
 
-
+6.4.5 ★ Podniesienie kosztu czekoladek, których dwa ostatnie znaki identyfikatora (idczekoladki) są większe od 90, o 15 groszy.
+SUBSTR!!!!
+update czekoladki set koszt = koszt + 0.15 where substr(idczekoladki,2,2)::integer > 90;
 6.5
 DELETE FROM klienci WHERE nazwa similar to 'Matusiak%';
 
@@ -663,30 +687,69 @@ DELETE FROM klienci WHERE nazwa similar to 'Matusiak%';
 
 
 
+KOLOSOWE
+select extract(quarter from (select date '2001-09-28' - interval '1 hour'));
+
+trim([leading | trailing | both] [characters] from string)   -- usiniecei wskazanego znaku
+
+Operator overlaps pozwala sprawdzic, czy dwa okresy nachodza na siebie:  --CASEselect ( case when (('2005-5-11'::date, '2005-5-18'::date) overlaps ('2005-5-13'::date, '2005-5-14'::date) = true) then 1 else 0 end);
+
+select ('2005-5-11'::timestamp, '2005-5-18'::timestamp) overlaps ('2006-5-13'::timestamp, '2006-5-14'::timestamp);
+
+select extract( hour from now());
 
 
-
-
-
-
-
-
-
-
-
+filtrowanie wartości funkcji agregujących, używa się do tego HAVING zamiast WHERE:
  
+1B
+with dni as (select czas_ostrzezenia, count(*) as ilosc from ostrzezenia where extract(year from czas_ostrzezenia) = 2016
+             group by czas_ostrzezenia)
+select d.czas_ostrzezenia, d.ilosc from dni d where d.ilosc = (select max(d.ilosc) from dni d);
+    
        
-       
-       
-       
+---all warnings       
+select czas_ostrzezenia, count(*) as ilosc from ostrzezenia 
+             group by czas_ostrzezenia;
+
+1A
+select r.nazwa from rzeki r natural join punkty_pomiarowe p join gminy g using(id_gminy) join 
+powiaty p using(id_powiatu) join wojewodztwa w using(id_wojewodztwa) join ostrzezenia o using(id_ostrzezenia)
+where w.nazwa = 'Małopolskie' and extract(year from o.czas_ostrzezenia) = 2016 and  extract(month from o.czas_ostrzezenia) = 4;
+except
+select r.nazwa from rzeki r natural join punkty_pomiarowe p join ostrzezenia o using(id_ostrzezenia)
+where o.przekroczony_stan_alarm is not null;
 
 
+select r.nazwa 
+from wojewodztwa w 
+     join powiaty p on (w.identyfikator = p.id_wojewodztwa) 
+     join gminy g on (p.identyfikator = g.id_powiatu) 
+     join punkty_pomiarowe pp on (pp.id_gminy = g.identyfikator)
+     join rzeki r on (pp.id_rzeki = r.id_rzeki)
+     join ostrzezenia o on (o.id_punktu = pp.id_punktu)
+--where extract(year from o.czas_ostrzezenia) = 2016 and  extract(month from o.czas_ostrzezenia) = 4
+except
+select r.nazwa from rzeki r natural join punkty_pomiarowe p natural join ostrzezenia o 
+where o.przekroczony_stan_alarm is not null;
 
 
+select r.nazwa, w.nazwa, count(o.przekroczony_stan_alarm)
+from wojewodztwa w 
+     join powiaty p on (w.identyfikator = p.id_wojewodztwa) 
+     join gminy g on (p.identyfikator = g.id_powiatu) 
+     join punkty_pomiarowe pp on (pp.id_gminy = g.identyfikator)
+     join rzeki r on (pp.id_rzeki = r.id_rzeki)
+     join ostrzezenia o on (o.id_punktu = pp.id_punktu)
+     group by 1,2;
 
-
-
-
+select r.nazwa, w.nazwa, o.zmiana_poziomu
+from wojewodztwa w 
+     join powiaty p on (w.identyfikator = p.id_wojewodztwa) 
+     join gminy g on (p.identyfikator = g.id_powiatu) 
+     join punkty_pomiarowe pp on (pp.id_gminy = g.identyfikator)
+     join rzeki r on (pp.id_rzeki = r.id_rzeki)
+     join ostrzezenia o on (o.id_punktu = pp.id_punktu)
+     where o.przekroczony_stan_alarm is not null;
 
 
 
