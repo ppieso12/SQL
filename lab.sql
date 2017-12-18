@@ -753,6 +753,57 @@ from wojewodztwa w
 
 
 
+10.2.1
+
+select idzamowienia, datarealizacji from zamowienia
+where idklienta in (select idklienta from klienci where nazwa ~'Antoni');
+
+10.2.2 klienci z meiszkan
+
+select idzamowienia, datarealizacji from zamowienia
+where idklienta in (select idklienta from klienci where ulica ~'/');
+
+10.2.3 zostały złożone przez klienta z Krakowa do realizacji w listopadzie 2013 roku
+
+select idzamowienia, datarealizacji from zamowienia
+where idklienta in (select idklienta from klienci where miejscowosc ~'Kraków') and
+ extract(month from datarealizacji) = 11 and extract(year from datarealizacji) = 2013;
+ 
+ 
+ Napisz zapytanie wyświetlające informacje na temat pudełek z czekoladkami (nazwa, opis, cena),
+ używając odpowiedniego operatora, np. in/not in/exists/any/all, które:
+ 10.4.7 nie zawierają czekoladek w gorzkiej czekoladzie,
+ 
+ select distinct p.nazwa from pudelka p natural join zawartosc z 
+ where idczekoladki not in
+ (select idczekoladki from czekoladki where czekolada ~'gorzka');
+ 
+ 10.4.8 nie zawierają czekoladek z orzechami
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
