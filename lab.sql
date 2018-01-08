@@ -780,7 +780,93 @@ where idklienta in (select idklienta from klienci where miejscowosc ~'Kraków') 
  
  10.4.8 nie zawierają czekoladek z orzechami
  
+  
+11.1.1 Napisz funkcję masaPudelka wyznaczającą masę pudełka jako sumę masy czekoladek w nim zawartych.
+Funkcja jako argument przyjmuje identyfikator pudełka. Przetestuj działanie funkcji na podstawie prostej instrukcji select.
+
+create or replace function masaPudelka(idp char) returns numeric(7,2) as
+$$
+ declare
+  wynik numeric(7,2);
+ begin
+  select into wynik sum(c.masa * z.sztuk) from pudelka p join zawartosc z using(idpudelka) join czekoladki c using(idczekoladki)
+  where idp = p.idpudelka
+  group by z.sztuk, c.masa;
+ return wynik;
+end
+$$
+language plpgsql;
+
+11.2.1 Napisz funkcję zysk obliczającą zysk jaki cukiernia uzyskuje ze sprzedaży jednego pudełka czekoladek, zakładając,
+że zysk ten jest różnicą między ceną pudełka, a kosztem wytworzenia zawartych w nim czekoladek 
+i kosztem opakowania (0,90 zł dla każdego pudełka). Funkcja jako argument przyjmuje identyfikator pudełka. 
+Przetestuj działanie funkcji na podstawie prostej instrukcji select.
+
+create or replace function zysk(idp char) returns numeric(7,2) as
+$$
+ declare
+  cena numeric(7,2);
+  koszt numeric(7,2);
+  wynik numeric(7,2);
+ begin
+  select into cena p.cena from pudelka p 
+  where idp = p.idpudelka;
+  
+  select into koszt sum(c.koszt * z.sztuk) from pudelka p join zawartosc z using(idpudelka) join czekoladki c using(idczekoladki)
+  where idp = p.idpudelka
+  group by z.sztuk, c.masa;
+  wynik := cena - koszt;
+ return wynik;
+ end;
+ $$
+ language plpgsql;
  
+ 11.2.2 Napisz instrukcję select obliczającą zysk jaki cukiernia uzyska ze sprzedaży pudełek zamówionych w 
+ wybranym dniu.
+ 
+ 11.3.1 Napisz funkcję sumaZamowien obliczającą łączną wartość zamówień złożonych przez klienta, które czekają na realizację
+ (są w tabeli Zamowienia).
+ Funkcja jako argument przyjmuje identyfikator klienta. Przetestuj działanie funkcji.
+ 
+ create or replace function sumaZamowien(idk integer) returns numeric(7,2) as
+$$
+ declare
+  suma numeric(7,2);
+  wynik numeric(7,2);
+ begin
+  select into suma sum(a.sztuk * p.cena) from klienci k join zamowienia z using(idklienta) join artykuly a 
+                                          using(idzamowienia) join pudelka p using(idpudelka)
+  where idk = k.idklienta
+  group by a.idzamowienia;
+  wynik := suma;
+ return wynik;
+ end;
+ $$
+ language plpgsql;
+ 
+   select sum(a.sztuk * p.cena), k.idklienta from klienci k join zamowienia z using(idklienta) join artykuly a 
+                                          using(idzamowienia) join pudelka p using(idpudelka)
+  group by a.sztuk, 2
+  order by 2 asc;
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
  
  
  
