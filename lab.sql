@@ -692,7 +692,8 @@ select extract(quarter from (select date '2001-09-28' - interval '1 hour'));
 
 trim([leading | trailing | both] [characters] from string)   -- usiniecei wskazanego znaku
 
-Operator overlaps pozwala sprawdzic, czy dwa okresy nachodza na siebie:  --CASEselect ( case when (('2005-5-11'::date, '2005-5-18'::date) overlaps ('2005-5-13'::date, '2005-5-14'::date) = true) then 1 else 0 end);
+Operator overlaps pozwala sprawdzic, czy dwa okresy nachodza na siebie:  
+--CASEselect ( case when (('2005-5-11'::date, '2005-5-18'::date) overlaps ('2005-5-13'::date, '2005-5-14'::date) = true) then 1 else 0 end);
 
 select ('2005-5-11'::timestamp, '2005-5-18'::timestamp) overlaps ('2006-5-13'::timestamp, '2006-5-14'::timestamp);
 
@@ -751,12 +752,21 @@ from wojewodztwa w
      join ostrzezenia o on (o.id_punktu = pp.id_punktu)
      where o.przekroczony_stan_alarm is not null;
 
+10***
+Operator exists słuzy do sprawdzenia, czy dane zapytanie zwróciło co najmniej jedna wartosc tj. czy relacja bedaca wynikiem 
+podzapytania nie jest pusta.
 
+select nazwa, miasto from druzyny where not exists(select 1 from punktujace natural join siatkarki where 
+                                                   punktujace.iddruzyny = druzyny.iddruzyny and punkty > 25);
 
 10.2.1
 
 select idzamowienia, datarealizacji from zamowienia
 where idklienta in (select idklienta from klienci where nazwa ~'Antoni');
+
+select idzamowienia, datarealizacji from zamowienia 
+where exists (select 1 from klienci where idklienta = zamowienia.idklienta and nazwa similar to '% Antoni');
+
 
 10.2.2 klienci z meiszkan
 
@@ -769,6 +779,30 @@ select idzamowienia, datarealizacji from zamowienia
 where idklienta in (select idklienta from klienci where miejscowosc ~'Kraków') and
  extract(month from datarealizacji) = 11 and extract(year from datarealizacji) = 2013;
  
+ //// ZAD. 10.3 ////
+Napisz zapytanie wyświetlające informacje na temat klientów (nazwa, ulica, miejscowość), używając odpowiedniego operatora in/not in/exists/any/all, którzy:
+
+(*) złożyli zamówienia z datą realizacji 12.11.2013,
+select idklienta, nazwa, ulica, miejscowosc from klienci 
+where exists (select 1 from zamowienia where idklienta = klienci.idklienta and datarealizacji = '2013-1
+11-12');
+
+(*) złożyli zamówienia z datą realizacji w listopadzie 2013,
+select idklienta, nazwa, ulica, miejscowosc from klienci where exists 
+(select 1 from zamowienia where idklienta = klienci.idklienta and date_part('month',datareealizacji) = 11 and date_part('year',datarealizacji) = 2013);
+ 
+ (*) zamówili pudełka, które zawierają czekoladki z migdałami
+select nazwa from klienci where idklienta 
+in (select idklienta from zamowienia where idzamowienia in 
+    (select idzamowienia from artykuly where idpudelka in (select idpudelka from zawartosc where idczekoladki 
+                                                           in (select idczekoladki from czekoladki where orzechy = 'migdały'))));
+
+(*) złożyli przynajmniej jedno zamówienie,
+select idklienta from klienci where exists (select 1 from zamowienia where idklienta = klienci.idklienta);
+
+(*) nie złożyli żadnych zamówień
+select idklienta from klienci where not exists (select 1 from zamowienia where idklienta = klienci.idklienta);
+select nazwa from klienci where idklienta not in (select idklienta from zamowienia );
  
  Napisz zapytanie wyświetlające informacje na temat pudełek z czekoladkami (nazwa, opis, cena),
  używając odpowiedniego operatora, np. in/not in/exists/any/all, które:
@@ -779,7 +813,61 @@ where idklienta in (select idklienta from klienci where miejscowosc ~'Kraków') 
  (select idczekoladki from czekoladki where czekolada ~'gorzka');
  
  10.4.8 nie zawierają czekoladek z orzechami
- 
+ --8
+select distinct p.nazwa, p.opis, p.cena
+from pudelka p natural join zawartosc z join czekoladki c using (idczekoladki)
+where p.nazwa not in (select p.nazwa
+                      from pudelka p natural join zawartosc z join czekoladki c using (idczekoladki)
+                      where c.orzechy is not null);
+--9
+select distinct p.nazwa, p.opis, p.cena
+from pudelka p natural join zawartosc z join czekoladki c using (idczekoladki)
+where p.nazwa in (select p.nazwa
+                  from pudelka p natural join zawartosc z join czekoladki c using (idczekoladki)
+where c.nadzienie is null);
+
+
+* nie zawierają czekoladek w gorzkiej czekoladzie
+select distinct p.nazwa, p.opis, p.cena from pudelka p natural join zawartosc z where not exists (select 1 from czekoladki where idczekoladki = z.idczekoladki and czekolada = 'gorzka');
+
+* nie zawierają czekoladek z orzechami
+%select distinct p.nazwa, p.opis, p.cena from pudelka p natural join zawartosc z where exists (select 1 from czekoladki where idczekoladki = z.idczekoladki and orzechy is null); <<-- ŹLE!
+select nazwa from pudelka p where idpudelka not in (select idpudelka from zawartosc where exists (select 1 from czekoladki where idczekoladki = zawartosc.idczekoladki and orzechy is not null));
+
+
+* zawierają przynajmniej jedną czekoladkę bez nadzienia
+select p.nazwa, p.opis, p.cena from pudelka p natural join zawartosc z where exists (select 1 from czekoladki where idczekoladki = z.idczekoladki and nadzienie is null);
+
+//// ZAD. 10.5 ////
+Napisz poniższe zapytania w języku SQL (używając odpowiedniego operatora in/not in/exists/any/all):
+
+* Wyświetl wartości kluczy głównych oraz nazwy czekoladek, których koszt jest większy od czekoladki o wartości klucza głównego równej D08
+select idczekoladki, nazwa from czekoladki where koszt > (select koszt from czekoladki where idczekoladki = 'd08');
+
+(*) Kto (nazwa klienta) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiała Gorka Alicja.
+- jeśli ma się pokrywać co najmniej jedno pudełko:
+select distinct nazwa from klienci natural join zamowienia natural join artykuly where idpudelka in (select idpudelka from zamowienia natural join artykuly where idklienta in (select idklienta from klienci where nazwa = 'Górka Alicja'));
+- jeśli mają się pokrywać dokładnie wszystkie zamawiane pudełka: [to chyba nie]
+
+(*) Kto (nazwa klienta, adres) złożył zamówienia na takie same czekoladki (pudełka) jak zamawiali klienci z Katowic.
+
+//// ZAD. 10.6 ////
+Wyświetl nazwę pudełka oraz ilość czekoladek, dla:
+
+* pudełka o największej liczbie czekoladek (bez użycia klauzuli limit)
+with pomoc as (select sum(z.sztuk) as suma, p.idpudelka as id_pud from pudelka p natural join zawartosc z group by p.idpudelka) 
+select suma, id_pud from pomoc where suma = (select max(suma) from pomoc);
+
+(*) pudełka o najmniejszej liczbie czekoladek (bez użycia klauzuli limit),
+(*) pudełka, w którym liczba czekoladek jest powyżej średniej.
+(*) pudełka o największej lub najmniejszej liczbie czekoladek.
+
+//// ZAD. 10.7 ////
+Napisz zapytanie wyświetlające: liczbę porządkową i identyfikator pudełka czekoladek (idpudelka). Identyfikatory pudełek mają być posortowane alfabetycznie, rosnąco. Liczba porządkowa jest z przedziału 1..N, gdzie N jest ilością pudełek.
+select p.idpudelka, (select count(*) from pudelka where idpudelka <= p.idpudelka) from pudelka p ORDER BY p.idpudelka ASC;
+  
+FUNKCJE  
+  
   
 11.1.1 Napisz funkcję masaPudelka wyznaczającą masę pudełka jako sumę masy czekoladek w nim zawartych.
 Funkcja jako argument przyjmuje identyfikator pudełka. Przetestuj działanie funkcji na podstawie prostej instrukcji select.
@@ -824,6 +912,25 @@ $$
  11.2.2 Napisz instrukcję select obliczającą zysk jaki cukiernia uzyska ze sprzedaży pudełek zamówionych w 
  wybranym dniu.
  
+ create or replace function zysk2 (data date)
+returns numeric(7,2) as
+$$
+declare
+suma numeric(7,2);
+
+begin
+  select sum(zamowienia.zysk) into suma
+    from (select idpudelka, sum(a.sztuk*(zyskPudelko.cena - zyskPudelko.koszt)) as zysk
+    from ( select idpudelka, p.cena as cena, sum(z.sztuk*c.koszt) as koszt
+    from pudelka p natural join zawartosc z join czekoladki c using (idczekoladki)
+    group by idpudelka) zyskPudelko join artykuly a using (idpudelka) natural join zamowienia
+    where datarealizacji = data
+    group by idpudelka) zamowienia;
+  return suma;
+end;
+$$
+language plpgsql;
+
  11.3.1 Napisz funkcję sumaZamowien obliczającą łączną wartość zamówień złożonych przez klienta, które czekają na realizację
  (są w tabeli Zamowienia).
  Funkcja jako argument przyjmuje identyfikator klienta. Przetestuj działanie funkcji.
@@ -843,6 +950,7 @@ $$
  end;
  $$
  language plpgsql;
+ 
  
    select sum(a.sztuk * p.cena), k.idklienta from klienci k join zamowienia z using(idklienta) join artykuly a 
                                           using(idzamowienia) join pudelka p using(idpudelka)
