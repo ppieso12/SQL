@@ -48,7 +48,7 @@ create table kwiaciarnia.zamowienia (
   cena          numeric(7,2),
   zaplacone     boolean,
   uwagi         varchar(200),
-  primary key   (idzamowienia, idklienta, idodbiorcy, idkompozycji)
+  primary key   (idzamowienia)
 );
 
 create table kwiaciarnia.zapotrzebowanie (
