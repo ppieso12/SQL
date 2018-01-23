@@ -951,11 +951,73 @@ $$
  $$
  language plpgsql;
  
- 
-   select sum(a.sztuk * p.cena), k.idklienta from klienci k join zamowienia z using(idklienta) join artykuly a 
-                                          using(idzamowienia) join pudelka p using(idpudelka)
-  group by a.sztuk, 2
-  order by 2 asc;
+11.7
+
+create or replace function rabat(id varchar) returns numeric(7,2) as
+$$ 
+declare
+suma numeric(7,2); 
+begin 
+ select sum(x.cena) into suma from 
+ (select idzamowienia,idklienta,cena from historia where 
+ extract(year from termin) = extract(year from now() and extract(month from termin) = extract(month from now()) and
+                                     extract(day from termin) >= extract(day from now() - 7
+                                                                         union 
+                                     select idzamowienia,idklienta,cena from zamowienia) as x where idklienta = id; 
+ if suma > 0 and suma <= 100 then return 0.05; 
+ elseif suma >= 101 and suma <= 400 then return 0.1; 
+ elseif suma >= 401 and suma <= 700 then return 0.15; 
+ elseif suma > 700 then return 0.2; 
+ else return 0.0; 
+ end if; 
+end; 
+$$ 
+language plpgsql;
+                                     
+12
+12.1
+ Utwórz (i przetestuj działanie) wyzwalacz (w schemacie kwiaciarnia), który przy złożeniu zamówienia przez klienta:
+
+    oblicza rabat dla sprzedającego (użyj funkcji z zadania 11.7) i modyfikuje pole cena w dodawanym rekordzie,
+    zmniejsza liczbę dostępnych kompozycji w tabeli kompozycje,
+    dodaje rekord do tabeli zapotrzebowanie, jeśli stan danej kompozycji spada poniżej stanu minimalnego.
+
+create function fn_zamowienia() returns trigger as
+$$
+ declare
+ var_rabat numeric(7,2);
+ v_stan integer;
+ v_minimum integer;                                    
+                                     
+ begin
+ var_rabat:= 1.0 - rabat(new.idklienta);
+                                     if var_rabat < 1.0 then
+                                     update zamowienie set cena = cena * var_rabat 
+                                     where idzamowienia = new.idzamowienia;
+                                     end if;
+                                     
+                                     update kompozycje set stan = stan -1
+                                     where idkompozycji = new.idkompozycji
+                                     
+                                     select stan, minimum into v_stan, v_minimum from kompozycje where idkompozycji = new.idkompozycji
+                                     
+                                     if v_stan < v_minimum then
+                                     insert into zapotrzebowanie(idkompozycji,data)
+                                     values(new.idkompozycji, current_date);
+                                     end if;
+                                     return null;
+end;
+$$   
+language plpgsql;
+                                     
+create trigger tr_zamowienie after insert on zamowienia
+for each row execute procedure fn_zamowienia();                                     
+                                     
+                                     
+                                     
+                                     
+                                     
+                                     
  
  
  
