@@ -951,6 +951,7 @@ $$
  $$
  language plpgsql;
  
+ 
 11.7
 
 create or replace function rabat(id varchar) returns numeric(7,2) as
@@ -960,7 +961,8 @@ suma numeric(7,2);
 begin 
  select sum(x.cena) into suma from 
  (select idzamowienia,idklienta,cena from historia where 
- extract(year from termin) = extract(year from now() and extract(month from termin) = extract(month from now()) and
+ extract(year from termin) = extract(year from now() and extract(month from termin)) = extract(month from now()) and
+  
                                      extract(day from termin) >= extract(day from now() - 7
                                                                          union 
                                      select idzamowienia,idklienta,cena from zamowienia) as x where idklienta = id; 
@@ -1011,24 +1013,199 @@ $$
 language plpgsql;
                                      
 create trigger tr_zamowienie after insert on zamowienia
-for each row execute procedure fn_zamowienia();                                     
+for each row execute procedure fn_zamowienia();  
+
+12.2Utwórz wyzwalacz (w schemacie kwiaciarnia), który automatycznie usuwa rekordy z tabeli zapotrzebowanie, jeżeli po 
+  dostawie (after update) wzrasta stan danej kompozycji powyżej minimum. Przetestuj działanie wyzwalacza.
+
+create function fn_anuluj_zapotrzebowanie() returns trigger as
+$$
+begin
+­­jesli stan byl nizszy niz minimum a po dostawie wiekszy
+if old.stan < new.minimum and new.stan > new.minimum then
+delete from zapotrzebowanie where idkompozycji=new.idkompozycji;
+end if;
+return null;
+end;
+$$
+language plpgsql;
+create trigger tr_anuluj_zapotrzebowanie after update on kompozycje
+for each row execute procedure fn_anuluj_zapotrzebowanie()
+
+12.2.1
+  Utwórz wyzwalacz modyfikujący (po aktualizacji rekordów w tabeli pudelka) pole cena w tabeli pudelka,
+  jeżeli cena jest mniejsza niż 105% kosztów wytworzenia danego pudełka czekoladek 
+  (koszt wytworzenia czekoladek + koszt pudełka 0,90 zł). W takim przypadku cenę należy ustawić na kwotę 105% kosztów wytworzenia.
                                      
+  create function fn_mod() returns trigger as
+$$
+ declare
+ kosztp numeric(7,2);
+ v_stan integer;
+ v_minimum integer;                                    
                                      
+ begin
+  select sum(c.koszt*z.sztuk) + 0.9 into kosztp from pudelka p join zawartosc z using(idpudelka) join czekoladki c using(idczekoladki)
+  if new.cena < 1.05*kosztp then
+   update pudelka set cena = 1.05*kosztp
+   where idpudelka = new.idpudelka
+  end if;
+  return null;
+
+end;
+$$   
+language plpgsql;
                                      
+create trigger tr_mod after update on pudelka
+for each row execute procedure fn_mod();                                      
                                      
+12.2.2
+   Utwórz wyzwalacz modyfikujący (przy wstawianiu i aktualizacji rekordów w tabeli zawartosc) pole cena w tabeli pudelka, 
+  jeżeli cena jest mniejsza niż 105% kosztów wytworzenia danego pudełka czekoladek (koszt wytworzenia czekoladek + koszt pudełka 0,90 zł). 
+  W takim przypadku cenę należy ustawić na kwotę 105% kosztów wytworzenia.
                                      
-                                     
+  create function fun_mod2() returns trigger as
+  $$
+  declare
+   kosztp numeric(7,2);
+  nowa_cena
+  stara_cena
+  begin
+   select sum(c.koszt*z.sztuk) + 0.9 into kosztp from pudelka p join zawartosc z using(idpudelka) join czekoladki c using(idczekoladki)
+  where p.idpudelka = new.idpudelka;
+  
+  SELECT cena INTO stara_cena FROM pudelka
+  WHERE idpudelka=new.idpudelka;
+  
+  if stara_cena<1.05*kosztp then
+  nowa_cena:=1.05*koszt1;
+  else 
+  nowa_cena:=stara_cena;
+  end if;
+  
+  update pudelka set cena=nowa_cena 
+  WHERE idpudelka=new.idpudelka;
+  
+  return null;
+  end;
+  
+  creater trigger tr_mod2 after insert on update on zawartosc for each row execute procedure fun_mod2();
  
+ 12.3
+   Utwórz wyzwalacz modyfikujący (przy aktualizacji rekordów w tabeli czekoladki) pole cena w tabeli pudelka, 
+  jeżeli cena jest mniejsza niż 105% kosztów wytworzenia danego pudełka czekoladek
+  (koszt wytworzenia czekoladek + koszt pudełka 0,90 zł). W takim przypadku cenę należy ustawić na kwotę 105% kosztów wytworzenia.
  
- 
- 
+
  
  
 
+EGZAMIN 
+  
+  petla for wiersz in select ...
+  Ostatni przetworzony wiersz b ̨edzie dost ̨epny równiez po zakonczeniu wykonywania p ̨etli lub przerwaniu jej działania za pomoca
+  instrukcji exit.
+  
+  2.A
+  create function fwyzwalacz() returns trigger as
+  $$
+  declare
+   punkt record;
+   starypom record;
+   p_ostrz integer:=0;
+   p_alarm integer:=0;
+  
+  begin
+   select * into punkt from punkty_pomiarowe where id_punktu = NEW.id_punktu;
+   select * into starypom from pomiary where czas_pomiaru < NEW.czas_pomiaru sort by desc limit 1;
+  
+   if punkt.stan_ostrzegawczy < NEW.poziom_wody then
+    p_ostrz := poziom_wody - punkt.stan_ostrzegawczy;
+  
+    if punkt.stan_alarmowy < NEW.poziom_wody then
+     p_alarm := poziom_wody - punkt.stan_alarmowy;
+    end if;
+  
+    insert into ostrzezenia values(starypom.id_ostrzezenia+1,NEW.id_punktu, NEW.czas_pomiaru, p_ostrz, p_alarm, 
+                                   starypom.poziom_wody/NEW.poziom_wody::numeric(7,2) - 1);
+   end if;
+  return NEW;
+  end;
+  $$
+  language plpgsql;
+  
+  create trigger wyzwalacz after insert on pomiary
+  for each row execute procedure fwyzwalacz();
+  
+1.B
+with pom_o as (select czas_ostrzezenia::date as data, count(*) as ilosco from ostrzezenia where extract(year from czas_ostrzezenia) = 2016 
+               group by 1)
+with pom_a as (select czas_ostrzezenia::date as data, count(*) as ilosca from ostrzezenia where extract(year from czas_ostrzezenia) = 2016 
+               and przekroczony_stan_alarm is not null group by 1)
+  select a.data, a.ilosca from pom_a a join pom_o o using(data) where o.ilosco = (select max(o.ilosco) from pom_o o);
+           
+  
+  
+2.B
+  function czas_ostrzegania(idpunktu integer, flaga boolean) returns interval as
+  $$
+  declare
+   pomiar timestamp;
+   ostrzezenie timestamp;
+   alarm timestamp;
+  begin
+   select czas_pomiaru into pomiar from pomiary where id_punktu = idpunktu sort by czas_pomiaru desc limit 1;
 
+   if flaga = false then
+  
+   select czas_ostrzezenia into ostrzezenie from ostrzezenia where id_punktu = idpunktu sort by czas_ostrzezenia desc limit 1;
+  
+    if pomiar = ostrzezenie then
+      return now() - ostrzezenie;
+    else
+      return interval '0';
+  
+   else
+   select czas_ostrzezenia into alarm from ostrzezenia where id_punktu = idpunktu and przekroczony_stan_alaromwy is not null 
+     sort by czas_ostrzezenia desc limit 1;
+  
+     if pomiar = alarm then
+       return now() - alarm;
+     else
+       return interval '0';
+   endif;
+  end;
+ $$
+ language plpgsql;
 
+3.B
+  create function wstaw() returns void as
+  %%
+  declare
+  ostatnip record;
+  przedostatnip record;
+  punkt record;
+  ostatnieo record;
+  przekroczony_alarm integer;
+  
+  begin
+   select * into ostatnieo from ostrzezenia sort by id_ostrzezenia desc limit 1;
+   select * into punkt from punkty_pomiarowe natural join rzeki where nazwa similar to '(S|s)an' sort by nr_porzadkowy desc limit 1;
+   select * into ostatnip from pomiary where id_punktu = punkt.id_punktu sort by czas_pomiaru desc limit 1;
+   select * into przedostatnip from pomiary where id_punktu = punkt.id_punktu sort by czas_pomiaru desc limit 1 offset 1;
+  
+   przekroczony_alarm := ostatnip.poziom_wody - punkt.stan_alarmowy;
+        if  przekroczony_alarm < 0 then
+            przekroczony_alarm := null;
+        end if;
+  
+   insert into ostrzezenia values(ostatnieo.id_ostrzezenia+1, punkt.id_punktu, ostatnip.czas_pomiaru,
+                                 ostatnip.poziom_wody - punkt.stan_ostrzegawczy, przekroczony_alarm,
+                                  przedostatnip.poziom_wody/ostatnip.poziom_wody -1);
 
-
+  end;
+  $$
+  plpgsql;
 
 
 
