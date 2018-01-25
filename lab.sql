@@ -1207,16 +1207,110 @@ with pom_a as (select czas_ostrzezenia::date as data, count(*) as ilosca from os
   $$
   plpgsql;
 
+  
+  zad 2 A exam 2016
+  
+  create function fw() returns trigger as
+  $$
+  declare
+  nr_paczki integer;
 
+  cena numeric(5,2):=0.0;
+  begin
+    select numer into nr_paczki from zawartosc where numer = NEW.numer;
+  
 
+  
+  
+  
+ 14/15 
+  gr A
+1 MAX LICZBA MEBLI W JEDNYM ZAMOWIENIU
+  with p as (select idzamowienia, sum(ilosc) as suma from zamowione_meble group by 1)
+  select idzamowienia, max(ilosc) from p;
+    
 
+2Podaj instrukcję wyświetlającą identyfikatory zamówień, które zawierają
+co najmniej jeden mebel, którego nazwa zaczyna się od ’K’ i kończy się dokładnie czterema
+cyframi.
+  
+ [^ ] Matches a single character that is not contained within the brackets. For example, [^abc] matches any character other than "a", "b", or "c".
+  
+  select distinct idzamowienia from zamowione_meble where idmebla in (select idmebla from zamowione_meble natural join meble
+                                                                 where nazwa ~'^K.*[^0-9][0-9]{4}$')
 
-
-
-
+3 Napisz wyzwalacz, który po usunięciu rekordu w tabeli
+zamowione_meble lub zamowione_paczki usuwa zamówienie do którego należał usuwany element, jeśli zamówienie jest już puste
+  
+  create function f() returns triggeer as
+  $$
+  begin
+  
+  delete zamowienia where idzamowienia not in (select idzamowienia from zamowione_meble where idzamowienia = OLD.idzamowienia)
+                  and not in (select idzamowienia from zamowione_paczki where idzamowienia = OLD.idzamowienia)
+  end;
+  $$
+  langugae plpgsql;
+  create trigger tr after delete on zamowione_mable  for each row execute procedure f();
+   create trigger tr after delete on  zamoWione_opaczki for each row execute procedure f();
+  
+4 Podaj instrukcję (1) tworzącą użytkownika karol, (2) dodającą go do grupy
+magazynierzy, (3) dodającą mu prawa do wstawiania i aktualizowania tabeli
+zamowione_paczki,(4) dodającą grupie magazynierzy prawa do odczytu z tabeli paczki.
+  
+ create role karol login
+ create magazynierzy to karol
+ grant insert, update on zamowione_paczki to karol 
+ grant select on paczki to magazynierzy 
  
- 
- 
+ gr B
+  1 Podaj instrukcję wyznaczającą średnią arytmetyczną, liczbę elementów, z
+których składają się meble.
+  
+    with p as (select idmebla, sum(ilosc) as suma from paczki natural join zawatosc group by 1)
+  select idmebla, avg(ilosc) from p;
+  
+  2Podaj instrukcję wyświetlającą numery paczek, które nie zawierają ele-
+mentów, których nazwa zawiera słowo zaczynające się od litery A, po której występują co
+najmniej 2 cyfry.
+ select numer from paczki where numer not in (select  p.numer from paczki p natural join zawartosc z join elementy e using(idelementu)
+                      where e.nazwa ~'^A[0-9]{2,}.*';)
+  
+  
+  
+  3Napisz wyzwalacz, który po wstawieniu lub aktualizacji danych w tabeli
+elementy, aktualizuje ceny w tabelach paczki i meble. Zakładamy, że cena paczki jest sumą cen
+jej elementów, a cena mebli jest sumą cen jego paczek.
+  
+  NIE PATRZEC NA NEW TYLKO POLICZYC WSZYSTKIE CENY OD NOWA
+  
+  create function f()  returns trigger as
+  $$
+  begin
+  
+  update paczki set cena =  (select sum(ilosc*cena) from zawartosc natural join elementy where 
+          paczki.numer = zawartosc.numer and paczki.idmebla = zawartosc.idmebla);
+  update meble set cena = (select sum(p.cena) from paczki p where meble.idmebla = p.idmebla)
+  
+  end;
+  create trigger after insert on update on elementy for each row execute procedure f();
+  
+  
+  
+4 Podaj istrukcje:
+•
+usuwająca użytkownika karol z grupy magazynierzy
+•
+odbierającą użytkownikowi karol wszystkie uprawnienia do tabeli elementy
+•
+usuwającą (całkowicie) użytkownika karol
+•
+usuwającą wszystkim użytkownikom prawo przeglądania tabeli meble
+  
+  revoke karol from magazynierzy
+  revoke all priviliges on elementy from karol
+  drop role karol
+  revoke select on meble from public
  
  
  
