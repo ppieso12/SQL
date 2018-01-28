@@ -703,9 +703,9 @@ select extract( hour from now());
 filtrowanie wartości funkcji agregujących, używa się do tego HAVING zamiast WHERE:
  
 1B
-with dni as (select czas_ostrzezenia, count(*) as ilosc from ostrzezenia where extract(year from czas_ostrzezenia) = 2016
+with dni as (select czas_ostrzezenia::date as dzien, count(*) as ilosc from ostrzezenia where extract(year from czas_ostrzezenia) = 2016
              group by czas_ostrzezenia)
-select d.czas_ostrzezenia, d.ilosc from dni d where d.ilosc = (select max(d.ilosc) from dni d);
+select d.dzien, d.ilosc from dni d where d.ilosc = (select max(d.ilosc) from dni d);
     
        
 ---all warnings       
@@ -713,7 +713,8 @@ select czas_ostrzezenia, count(*) as ilosc from ostrzezenia
              group by czas_ostrzezenia;
 
 1A
-select r.nazwa from rzeki r natural join punkty_pomiarowe p join gminy g using(id_gminy) join 
+-- zrobic where r.nazwa not in (tutaj select z ostrzezeniami i joinowaniem do wojewodztwa MŁP)
+select r.nazwa from rzeki r natural join punkty_pomiarowe p join gminy g using(id_gminy) join --te co nie maja ostrz nie wejda- zle
 powiaty p using(id_powiatu) join wojewodztwa w using(id_wojewodztwa) join ostrzezenia o using(id_ostrzezenia)
 where w.nazwa = 'Małopolskie' and extract(year from o.czas_ostrzezenia) = 2016 and  extract(month from o.czas_ostrzezenia) = 4;
 except
@@ -1113,7 +1114,7 @@ EGZAMIN
    punkt record;
    starypom record;
    p_ostrz integer:=0;
-   p_alarm integer:=0;
+   p_alarm integer;
   
   begin
    select * into punkt from punkty_pomiarowe where id_punktu = NEW.id_punktu;
@@ -1193,6 +1194,7 @@ with pom_a as (select czas_ostrzezenia::date as data, count(*) as ilosca from os
    select * into punkt from punkty_pomiarowe natural join rzeki where nazwa similar to '(S|s)an' sort by nr_porzadkowy desc limit 1;
    select * into ostatnip from pomiary where id_punktu = punkt.id_punktu sort by czas_pomiaru desc limit 1;
    select * into przedostatnip from pomiary where id_punktu = punkt.id_punktu sort by czas_pomiaru desc limit 1 offset 1;
+
   
    przekroczony_alarm := ostatnip.poziom_wody - punkt.stan_alarmowy;
         if  przekroczony_alarm < 0 then
@@ -1206,7 +1208,41 @@ with pom_a as (select czas_ostrzezenia::date as data, count(*) as ilosca from os
   end;
   $$
   plpgsql;
-
+  
+  ***
+  drugi termin 2017
+  ***
+  zwrot recordu
+  RETURNS record  zwraca 1 anonimowy rekord, 
+  lepiej to:
+  function n(..., out param1 integer, out param2 integer) as $$...
+  declare two OUT parameters instead i return (param1, param2);
+  
+  zwrot całej tablicy:
+  ) return table (aaa integer, bbb numeric(7,2)) as $$
+  begin
+  return query
+  select....
+  
+  ALBO
+  create temporary table wyniki (mecz smallint, punkty smallint);
+  potem w deklaracji funkcji returns setof wyniki as $$
+  
+  return query 
+  select idmeczu, punkty from punktujace...
+  
+  3.
+  modyfikacja ostrz
+  update ostrzezenia set przekroczony_stan_alarm = (case 
+                                                    when przekroczony_stan_alarm > 20 then przekroczony_stan_alarm - 20  else null end)
+                     where czas_ostrzezenia between '2017-01-01' and '2017-01-31';                       
+                   
+                   
+ 1.
+  with dni as (select czas_ostrzezenia::date as dzien, count(*) as ilosc from ostrzezenia where extract(year from czas_ostrzezenia) = 2016
+              group by czas_ostrzezenia)
+select d.dzien, d.ilosc from dni d where d.ilosc > (select avg(d.ilosc) from dni d);
+                   
   
   zad 2 A exam 2016
   
@@ -1227,7 +1263,7 @@ with pom_a as (select czas_ostrzezenia::date as data, count(*) as ilosca from os
   gr A
 1 MAX LICZBA MEBLI W JEDNYM ZAMOWIENIU
   with p as (select idzamowienia, sum(ilosc) as suma from zamowione_meble group by 1)
-  select idzamowienia, max(ilosc) from p;
+  select idzamowienia, max(suma) from p;
     
 
 2Podaj instrukcję wyświetlającą identyfikatory zamówień, które zawierają
@@ -1252,14 +1288,14 @@ zamowione_meble lub zamowione_paczki usuwa zamówienie do którego należał usu
   $$
   langugae plpgsql;
   create trigger tr after delete on zamowione_mable  for each row execute procedure f();
-   create trigger tr after delete on  zamoWione_opaczki for each row execute procedure f();
+  create trigger tr after delete on  zamoWione_opaczki for each row execute procedure f();
   
 4 Podaj instrukcję (1) tworzącą użytkownika karol, (2) dodającą go do grupy
 magazynierzy, (3) dodającą mu prawa do wstawiania i aktualizowania tabeli
 zamowione_paczki,(4) dodającą grupie magazynierzy prawa do odczytu z tabeli paczki.
   
  create role karol login
- create magazynierzy to karol
+ grant magazynierzy to karol
  grant insert, update on zamowione_paczki to karol 
  grant select on paczki to magazynierzy 
  
@@ -1307,16 +1343,28 @@ usuwającą (całkowicie) użytkownika karol
 •
 usuwającą wszystkim użytkownikom prawo przeglądania tabeli meble
   
-  revoke karol from magazynierzy
+  revoke magazynierzy  from karol
   revoke all priviliges on elementy from karol
   drop role karol
   revoke select on meble from public
  
  
  
+ Podaj instrukcje wyswietlajaca id nazwe cene, dla tych mebli które są pakowane do co najmniej 4 paczek i nie były nigdy zamawiane
  
+ with p as (select idmebla, count(*) as ilosc_paczek from paczki group by 1)
  
+ select idmebla, nazwa, cena form meble join p using(idmebla) where p.ilosc_paczek >= 4 and idmebla not in (select idmebla from 
+                                                                                                            zamowione_meble);
  
+ 3 zad z srednia wartoscia zamówienia dla mebli i pczaek
+ 
+ with p as(
+ select data, sum(ilosc*cena) as aa from zamowienia natural join zamowione_meble natural join meble group by 1
+ union
+ select data, sum(ilosc*cena) as aafrom zamowienia natural join zamowione_paczki natural join paczki group by 1)
+ 
+ select avg(aa) from p where p.data between '2016-01-01' and '2016-01-31';
  
  
  
