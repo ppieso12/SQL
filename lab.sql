@@ -1367,7 +1367,8 @@ usuwającą wszystkim użytkownikom prawo przeglądania tabeli meble
  select avg(aa) from p where p.data between '2016-01-01' and '2016-01-31';
  
  
- 
+ 3 zadanie 2012-2013
+ delete from mecze where idmeczu not in (select idmeczu from statystyki);
 
 
 
