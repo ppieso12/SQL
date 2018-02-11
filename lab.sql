@@ -1381,7 +1381,13 @@ Select kobitka.imie, kobitka.nazwisko, mecze.ilosc_meczy, zdobyte.suma_pkt
      where zdobyte.suma_pkt >= 100 and mecze.ilosc_meczy <= 12;
 
 
+5 zadanie
 
+SELECT s.idmeczu, m.termin, gospod.nazwa, gosc.nazwa from statystyki s join mecze m usign(idmeczu) join punktujace p using(idmeczu)
+        join druzyny gospod where m.gospodarze = gospod.iddruzyny join druzyny gosc where m.goscie = gosc.iddruzyny where
+  ((s.gospodarze[4] is null and s.gospodarze[3] is not null and s.goscie[1] is not null and s.goscie[2] is null) or
+  (s.goscie[4] is null and s.goscie[3] is not null and s.gospodarze[1] is not null and s.gospodarze[2] is null))
+  and (SELECT punkty from punktujace where numer == 4) is not null;
 
 
 
