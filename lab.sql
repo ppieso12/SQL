@@ -1370,9 +1370,14 @@ usuwającą wszystkim użytkownikom prawo przeglądania tabeli meble
  3 zadanie 2012-2013
  delete from mecze where idmeczu not in (select idmeczu from statystyki);
 
+4 zadanie
 
-
-
+with zdobyte_punkty as (Select numer, iddruzyny, sum(punkty) as suma_pkt from punktujace group by 1,2),   
+     liczba_meczy as (Select numer, iddruzyny, count(*) as ilosc_meczy from punktujace group by 1,2)
+     
+Select kobitka.imie, kobitka.nazwisko, mecze.ilosc_meczy, zdobyte.suma_pkt 
+     from zdobyte_punkty zdobyte natural join liczba_meczy mecze natural join siatkarki kobitka 
+     where zdobyte.suma_pkt >= 100 and mecze.ilosc_meczy <= 12;
 
 
 
