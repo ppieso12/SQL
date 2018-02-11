@@ -1389,15 +1389,75 @@ SELECT s.idmeczu, m.termin, gospod.nazwa, gosc.nazwa from statystyki s join mecz
   (s.goscie[4] is null and s.goscie[3] is not null and s.gospodarze[1] is not null and s.gospodarze[2] is null))
   and (SELECT punkty from punktujace where numer == 4) is not null;
 
+2 z funkcją
+
+  function zwyciezca(idm smallint) returns varchar(4) as
+  $$
+  declare
+  druzyna_gospodarzy record;
+  druzyna_gosci record;
+  wyniki record;
+  
+  begin
+    Select (*) into wyniki from statystyki where idmeczu == idm;
+    SELECT (*) into druzyna_gospodarzy from druzyny d join mecze m using(gospodarze) where m.idmeczu==idm;
+    SELECT (*) into druzyna_gosci from druzyny d join mecze m using(goscie) where m.idmeczu==idm;
+    
+    if wyniki.gospodarze[5] is not null then
+      if wyniki.gospodarze[5] > wyniki.goscie[5] then
+         return druzyna_gospodarzy.nazwa;
+      end if;
+      return druzyna_gosci.nazwa;
+    end if;
+    
+    if wyniki.gospodarze[4] is not null then
+      if wyniki.gospodarze[4] > wyniki.goscie[4] then
+         return druzyna_gospodarzy.nazwa;
+      end if;
+      return druzyna_gosci.nazwa;
+    end if;
+    
+    if wyniki.gospodarze[3] > wyniki.goscie[3] then
+         return druzyna_gospodarzy.nazwa;
+    end if;
+    return druzyna_gosci.nazwa;
+    
+  end;
+ $$
+ language plpgsql;
+ 
+ --wersja bez zmiennych
+
+create function zwyciezca(idm smallint) returns varchar as
+$$
+declare
+begin
+if (SELECT gospodarze[5] from statystyki  where idmeczu==idm) is not null then
+if (SELECT gospodarze[5] from statystyki where idmeczu==idm)>(SELECT goscie[5] from statystyki where idmeczu==idm)
+then
+return (SELECT d.nazwa from druzyny d join mecze m using(gospodarze) where m.idmeczu==idm);
+end if;
+return (SELECT d.nazwa from druzyny d join mecze m using(goscie) where m.idmeczu==idm);
+end if;
+if (SELECT gospodarze[4] from statystyki  where idmeczu==idm) is not null then
+if (SELECT gospodarze[4] from statystyki where idmeczu==idm)>(SELECT goscie[4] from statystyki where idmeczu==idm)
+then
+return (SELECT d.nazwa from druzyny d join mecze m using(gospodarze) where m.idmeczu==idm);
+end if;
+return (SELECT d.nazwa from druzyny d join mecze m using(goscie) where m.idmeczu==idm);
+end if;
+if (SELECT gospodarze[3] from statystyki where idmeczu==idm)>(SELECT goscie[3] from statystyki where idmeczu==idm)
+then
+return (SELECT d.nazwa from druzyny d join mecze m using(gospodarze) where m.idmeczu==idm);
+end if;
+return (SELECT d.nazwa from druzyny d join mecze m using(goscie) where m.idmeczu==idm);
+end;
+$$
+language plpgsql
 
 
 
-
-
-
-
-
-
+    
 
 
 
